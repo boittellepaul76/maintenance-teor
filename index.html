@@ -720,7 +720,7 @@
             const nom = document.getElementById('admin-reg-nom').value.trim();
             const pass = document.getElementById('admin-reg-pass').value;
 
-            const userKey = `${prenom}.${nom}`.toLowerCase().replace(/\s+/g, '');
+            const userKey = `${prenom}-${nom}`.toLowerCase().replace(/\s+/g, '');
             const fullName = `${prenom} ${nom}`;
 
             if (dbUsers[userKey]) {
