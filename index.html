@@ -856,6 +856,8 @@
             const entry = `[${dateStr}] ${actionText}`;
             auditLogs.unshift(entry);
             saveDataToCloud('auditLogs', auditLogs);
+
+            renderAuditLogs();
         }
 
         function renderAuditLogs() {
