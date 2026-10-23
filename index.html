@@ -731,6 +731,8 @@
             dbUsers[userKey] = { id: userKey, name: fullName, pass: pass, role: 'TECHNICIEN' };
             saveDataToCloud('users', dbUsers);
 
+            renderUsersList();
+
             addAuditLog(`CRÉATION DE COMPTE par Admin : ${fullName} (${userKey})`);
             alert(`Compte Technicien créé avec succès !\nIdentifiant : ${userKey}\nMot de passe : ${pass}`);
             
