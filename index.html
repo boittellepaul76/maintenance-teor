@@ -98,7 +98,7 @@
             <form id="form-login" onsubmit="handleLogin(event)" class="space-y-3">
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1">Identifiant (prenom.nom)</label>
-                    <input type="text" id="login-username" placeholder="ex: paul.admin" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm lowercase focus:ring-2 focus:ring-astuce outline-none">
+                    <input type="text" id="login-username" placeholder="ex: paul-admin" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm lowercase focus:ring-2 focus:ring-astuce outline-none">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1">Mot de passe</label>
@@ -112,7 +112,7 @@
             <form id="form-reset" onsubmit="handleResetPassword(event)" class="space-y-3 hidden">
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1">Votre identifiant (prenom.nom)</label>
-                    <input type="text" id="reset-username" placeholder="ex: paul.admin" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm lowercase">
+                    <input type="text" id="reset-username" placeholder="ex: paul-admin" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm lowercase">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1">Nouveau mot de passe</label>
@@ -601,7 +601,7 @@
         ];
 
         let dbUsers = {
-            'paul.admin': { id: 'paul.admin', name: 'Paul Admin', pass: '1234', role: 'ADMIN' }
+            'paul-admin': { id: 'paul-admin', name: 'Paul Admin', pass: '1234', role: 'ADMIN' }
         };
 
         let currentUser = JSON.parse(localStorage.getItem('teor_logged_user_v22')) || null;
@@ -639,7 +639,7 @@
                         dbUsers = data;
                     } else {
                         // Initialiser l'admin par défaut sur Firebase si vide
-                        set(ref(db, 'users/paul.admin'), dbUsers['paul.admin']);
+                        set(ref(db, 'users/paul-admin'), dbUsers['paul-admin']);
                     }
                     renderUsersList();
                 });
@@ -746,7 +746,7 @@
 
         function supprimerUser(userKey) {
             if (!currentUser || currentUser.role !== 'ADMIN') return;
-            if (userKey === 'paul.admin') {
+            if (userKey === 'paul-admin') {
                 alert("Vous ne pouvez pas supprimer le compte Administrateur principal !");
                 return;
             }
@@ -766,7 +766,7 @@
             const keys = Object.keys(dbUsers);
             container.innerHTML = keys.map(k => {
                 const u = dbUsers[k];
-                const isMainAdmin = k === 'paul.admin';
+                const isMainAdmin = k === 'paul-admin';
                 const show = visiblePasswords[k];
                 return `
                     <div class="flex justify-between items-center p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
@@ -835,7 +835,7 @@
             document.getElementById('user-display-name').innerText = `${currentUser.name} (${currentUser.id})`;
             document.getElementById('print-user-name').innerText = currentUser.name;
 
-            if (currentUser.role === 'ADMIN' && currentUser.id === 'paul.admin') {
+            if (currentUser.role === 'ADMIN' && currentUser.id === 'paul-admin') {
                 roleBadge.innerText = "Administrateur";
                 roleBadge.className = "text-[10px] bg-astuce-dark text-astuce-light px-2 py-0.5 rounded-full font-bold";
                 auditBtn.classList.remove('hidden');
@@ -933,7 +933,7 @@
         }
 
         function switchTab(tab) {
-            if (tab === 'audit' && (!currentUser || currentUser.role !== 'ADMIN' || currentUser.id !== 'paul.admin')) {
+            if (tab === 'audit' && (!currentUser || currentUser.role !== 'ADMIN' || currentUser.id !== 'paul-admin')) {
                 alert("Accès réservé exclusivement à l'Administrateur.");
                 return;
             }
@@ -1535,7 +1535,7 @@
                 return;
             }
 
-            const isAdmin = currentUser && currentUser.role === 'ADMIN' && currentUser.id === 'paul.admin';
+            const isAdmin = currentUser && currentUser.role === 'ADMIN' && currentUser.id === 'paul-admin';
 
             listEl.innerHTML = stateCuratifs.map((c, idx) => `
                 <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3 border-l-4 border-l-red-500 print-card">
@@ -1632,7 +1632,7 @@
         }
 
         function supprimerCuratifDev(idx) {
-            if (!currentUser || currentUser.role !== 'ADMIN' || currentUser.id !== 'paul.admin') return;
+            if (!currentUser || currentUser.role !== 'ADMIN' || currentUser.id !== 'paul-admin') return;
             const target = stateCuratifs[idx];
             if (confirm(`Confirmez-vous la suppression définitive du curatif ${target.id} ?`)) {
                 stateCuratifs.splice(idx, 1);
