@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance TEOR - Réseau Astuce</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- FIREBASE SDKS -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, get, remove } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBAYpdDKquf2YMpD8sqI0WHMM8OoGmaG3k",
+            authDomain: "maintenance-teor.firebaseapp.com",
+            projectId: "maintenance-teor",
+            storageBucket: "maintenance-teor.firebasestorage.app",
+            messagingSenderId: "225870782444",
+            appId: "1:225870782444:web:664fc4a9712c233cdd2ac9",
+            measurementId: "G-9PVRV4TBGY"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Exposer Firebase globalement pour l'application
+        window.FB = { db, ref, set, onValue, get, remove };
+        window.dispatchEvent(new Event('firebase-ready'));
+    </script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        astuce: {
+                            DEFAULT: '#e2007a',
+                            dark: '#b80063',
+                            light: '#fce4f1',
+                            subtle: '#f9a8d4'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @media print {
+            header, nav, button, input[type="file"], .no-print, form, .modal-backdrop {
+                display: none !important;
+            }
+            body { background-color: #ffffff !important; color: #000000 !important; padding: 0 !important; }
+            main { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            
+            main > section { display: none !important; }
+            
+            #tab-dashboard.print-active-section,
+            #tab-curatif.print-active-section,
+            #tab-audit.print-active-section {
+                display: block !important;
+            }
+
+            .print-card { 
+                border: 1px solid #cbd5e1 !important; 
+                box-shadow: none !important; 
+                page-break-inside: avoid; 
+                margin-bottom: 1rem !important; 
+                display: block !important;
+            }
+            .print-header { display: block !important; border-bottom: 2px solid #e2007a; padding-bottom: 10px; margin-bottom: 20px; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans pb-12 min-h-screen">
+
+    <!-- ÉCRAN D'AUTHENTIFICATION -->
+    <div id="auth-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-5 border border-slate-200">
+            <div class="text-center space-y-2">
+                <div class="inline-flex p-3 bg-astuce-light text-astuce rounded-2xl mb-1">
+                    <i class="fa-solid fa-bus text-3xl"></i>
+                </div>
+                <div class="flex justify-center items-center gap-1 font-black text-2xl text-astuce tracking-tight">
+                    <span>astuce</span>
+                </div>
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Rouen Métropole Mobilités</p>
+                <p class="text-xs text-slate-400">Maintenance TEOR - Connexion Technicien</p>
+            </div>
+
+            <div class="flex border-b text-xs font-bold text-center">
+                <button type="button" id="btn-auth-login" onclick="switchAuthMode('login')" class="flex-1 py-2 border-b-2 border-astuce text-astuce">Connexion</button>
+                <button type="button" id="btn-auth-reset" onclick="switchAuthMode('reset')" class="flex-1 py-2 border-b-2 border-transparent text-slate-400 hover:text-slate-600">Mot de passe oublié</button>
+            </div>
+
+            <form id="form-login" onsubmit="handleLogin(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Identifiant (prenom.nom)</label>
+                    <input type="text" id="login-username" placeholder="ex: paul.admin" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm lowercase focus:ring-2 focus:ring-astuce outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Mot de passe</label>
+                    <input type="password" id="login-password" placeholder="••••••••" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-astuce outline-none">
+                </div>
+                <button type="submit" class="w-full py-3 bg-astuce text-white rounded-xl font-bold text-sm hover:bg-astuce-dark shadow-md transition-all">
+                    Se connecter
+                </button>
+            </form>
+
+            <form id="form-reset" onsubmit="handleResetPassword(event)" class="space-y-3 hidden">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Votre identifiant (prenom.nom)</label>
+                    <input type="text" id="reset-username" placeholder="ex: paul.admin" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm lowercase">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Nouveau mot de passe</label>
+                    <input type="password" id="reset-new-password" placeholder="Nouveau mot de passe" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm">
+                </div>
+                <button type="submit" class="w-full py-3 bg-amber-600 text-white rounded-xl font-bold text-sm hover:bg-amber-700 shadow-md">
+                    Réinitialiser mon mot de passe
+                </button>
+            </form>
+
+            <p id="auth-error" class="text-xs text-red-600 text-center font-bold hidden"></p>
+        </div>
+    </div>
+
+    <!-- EN-TÊTE PRINCIPAL -->
+    <header class="bg-astuce text-white p-4 shadow-lg sticky top-0 z-40 no-print">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-white text-astuce font-black px-2.5 py-1 rounded-lg text-lg tracking-tighter shadow-sm">
+                    astuce
+                </div>
+                <div>
+                    <h1 class="text-base font-bold flex items-center gap-2 leading-tight">
+                        Maintenance TEOR
+                    </h1>
+                    <p class="text-[10px] text-astuce-light uppercase tracking-wider">Rouen Métropole Mobilités</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="text-right">
+                    <p id="user-display-name" class="text-xs font-bold text-white">Non connecté</p>
+                    <span id="user-display-role" class="text-[10px] bg-astuce-dark text-astuce-light px-2 py-0.5 rounded-full font-semibold">Technicien</span>
+                </div>
+                <button type="button" onclick="logout()" class="p-2 bg-astuce-dark hover:bg-red-600 text-white rounded-lg text-xs font-bold transition-all" title="Se déconnecter">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- BARRE DE NAVIGATION -->
+    <nav class="bg-white border-b border-slate-200 shadow-sm sticky top-[60px] z-30 no-print">
+        <div class="max-w-6xl mx-auto flex overflow-x-auto">
+            <button id="btn-tab-dashboard" onclick="switchTab('dashboard')" class="flex-1 py-3 px-3 text-center font-bold text-astuce border-b-2 border-astuce flex justify-center items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
+                <i class="fa-solid fa-chart-pie"></i> Tableau de bord
+            </button>
+            <button id="btn-tab-preventif" onclick="switchTab('preventif')" class="flex-1 py-3 px-3 text-center font-bold text-slate-500 border-b-2 border-transparent hover:text-astuce flex justify-center items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
+                <i class="fa-solid fa-clipboard-check"></i> Saisie Préventif
+            </button>
+            <button id="btn-tab-curatif" onclick="switchTab('curatif')" class="flex-1 py-3 px-3 text-center font-bold text-slate-500 border-b-2 border-transparent hover:text-astuce flex justify-center items-center gap-2 text-xs sm:text-sm whitespace-nowrap relative">
+                <i class="fa-solid fa-wrench"></i> Curatifs
+                <span id="badge-curatif" class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full hidden">0</span>
+            </button>
+            <button id="btn-tab-audit" onclick="switchTab('audit')" class="flex-1 py-3 px-3 text-center font-bold text-slate-500 border-b-2 border-transparent hover:text-astuce flex justify-center items-center gap-2 text-xs sm:text-sm whitespace-nowrap hidden">
+                <i class="fa-solid fa-user-shield"></i> Espace Admin
+            </button>
+        </div>
+    </nav>
+
+    <!-- EN-TÊTE IMPRESSION PDF PRO -->
+    <div class="hidden print-header max-w-6xl mx-auto p-4">
+        <div class="flex justify-between items-center border-b border-astuce pb-2">
+            <div>
+                <span class="text-astuce font-black text-2xl tracking-tighter">astuce</span>
+                <span class="text-xs font-bold text-slate-500 ml-2">Rouen Métropole Mobilités</span>
+                <h1 class="text-xl font-bold text-slate-900 mt-1">Rapport de Maintenance Réseau TEOR</h1>
+            </div>
+            <div class="text-right text-xs text-slate-500">
+                <p>Édité par : <span id="print-user-name"></span></p>
+                <p>Date : <span id="print-date-now"></span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENU PRINCIPAL -->
+    <main class="max-w-6xl mx-auto p-4 space-y-6">
+
+        <!-- SECTION TABLEAU DE BORD -->
+        <section id="tab-dashboard" class="space-y-6">
+            <div class="flex justify-between items-center no-print">
+                <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-astuce"></i> Indicateurs clés & Santé du Réseau TEOR
+                </h2>
+            </div>
+
+            <!-- CARTES DE STATISTIQUES ET POURCENTAGES -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                
+                <!-- KPI % PRÉVENTIFS -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2 border-t-4 border-t-emerald-500">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold uppercase text-slate-500">Avancement Préventif</span>
+                        <i class="fa-solid fa-clipboard-check text-emerald-500 text-lg"></i>
+                    </div>
+                    <div class="flex items-baseline gap-2">
+                        <span id="kpi-prev-pct" class="text-3xl font-black text-emerald-600">0%</span>
+                        <span id="kpi-prev-count" class="text-xs text-slate-400 font-semibold">(0 / 71)</span>
+                    </div>
+                    <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div id="bar-prev-pct" class="bg-emerald-500 h-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <p class="text-[11px] text-slate-500 pt-1">Proportion de stations nettoyées et contrôlées.</p>
+                </div>
+
+                <!-- KPI % CURATIFS -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2 border-t-4 border-t-astuce">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold uppercase text-slate-500">Résolution Curatifs</span>
+                        <i class="fa-solid fa-wrench text-astuce text-lg"></i>
+                    </div>
+                    <div class="flex items-baseline gap-2">
+                        <span id="kpi-cur-pct" class="text-3xl font-black text-astuce">0%</span>
+                        <span id="kpi-cur-count" class="text-xs text-slate-400 font-semibold">(0 Résolu / 0 Total)</span>
+                    </div>
+                    <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div id="bar-cur-pct" class="bg-astuce h-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <p class="text-[11px] text-slate-500 pt-1">Proportion des ordonnances de travail traitées.</p>
+                </div>
+
+                <!-- KPI SANTE DU RESEAU -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2 border-t-4 border-t-indigo-500">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold uppercase text-slate-500">Indice Santé Réseau</span>
+                        <i class="fa-solid fa-heart-pulse text-indigo-500 text-lg"></i>
+                    </div>
+                    <div class="flex items-baseline gap-2">
+                        <span id="kpi-health-pct" class="text-3xl font-black text-indigo-600">0%</span>
+                        <span id="kpi-health-status" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Calcul...</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 pt-1">Taux de dysfonctionnements par préventif réalisé (idéalement &lt; 20%).</p>
+                </div>
+
+            </div>
+
+            <!-- RÉCAPITULATIF DES PRÉVENTIFS FAITS -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 print-card">
+                <div class="flex justify-between items-center border-b pb-3 no-print">
+                    <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-square-check text-emerald-600"></i> Récapitulatif des Préventifs Faits
+                    </h3>
+                    <button type="button" onclick="imprimerPreventifsFaits()" class="bg-astuce text-white text-xs px-3 py-2 rounded-lg font-bold hover:bg-astuce-dark flex items-center gap-1 shadow-sm">
+                        <i class="fa-solid fa-file-pdf"></i> Imprimer Tous les Préventifs (PDF)
+                    </button>
+                </div>
+                
+                <div id="preventifs-faits-list" class="space-y-3"></div>
+            </div>
+        </section>
+
+        <!-- SECTION FORMULAIRE PRÉVENTIF -->
+        <section id="tab-preventif" class="space-y-6">
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 print-card">
+                <div class="flex justify-between items-center border-b pb-3">
+                    <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-pen-to-square text-astuce no-print"></i> <span id="form-title">Fiche de Maintenance Préventive</span>
+                    </h2>
+                    <button type="button" onclick="resetForm()" class="text-xs text-slate-500 hover:text-slate-800 underline no-print">Réinitialiser</button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">N° de BT</label>
+                        <input type="text" id="prev-bt" placeholder="Ex: BT-2026-001" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-astuce">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Station</label>
+                        <input list="stations-list" id="prev-station" placeholder="Saisir station..." class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm font-semibold text-slate-700">
+                        <datalist id="stations-list"></datalist>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Date</label>
+                        <input type="date" id="prev-date" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Agents</label>
+                        <input type="text" id="prev-agents" placeholder="Ex: PBI, PPI" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Temps (h)</label>
+                        <input type="number" step="0.5" id="prev-temps" placeholder="Ex: 2.5" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm">
+                    </div>
+                </div>
+
+                <div class="mt-6 space-y-6">
+                    <div>
+                        <h3 class="font-bold text-astuce bg-astuce-light p-2 rounded-lg mb-2 text-xs uppercase border border-astuce-subtle">
+                            Points de contrôle - VOIE 1 (V1)
+                        </h3>
+                        <div id="tasks-container-v1" class="space-y-1.5"></div>
+                    </div>
+
+                    <div>
+                        <h3 class="font-bold text-purple-800 bg-purple-50 p-2 rounded-lg mb-2 text-xs uppercase border border-purple-200">
+                            Points de contrôle - VOIE 2 (V2)
+                        </h3>
+                        <div id="tasks-container-v2" class="space-y-1.5"></div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t space-y-3">
+                    <div class="flex justify-between items-center">
+                        <label class="block text-xs font-bold text-slate-600 uppercase">Commentaires / Remarques</label>
+                        <button type="button" onclick="analyserIA()" class="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-lg hover:bg-purple-200 font-bold flex items-center gap-1 no-print">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Analyser remarques avec IA
+                        </button>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-3 items-start">
+                        <textarea id="prev-commentaires" rows="3" placeholder="Tapez vos remarques..." class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg text-sm"></textarea>
+                        
+                        <div class="no-print">
+                            <label for="photo-input" class="cursor-pointer bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-3 rounded-lg flex flex-col items-center justify-center gap-1 text-xs font-bold border border-slate-300 min-w-[110px] h-[82px]">
+                                <i class="fa-solid fa-camera text-xl text-slate-600"></i>
+                                <span>Ajouter photo</span>
+                            </label>
+                            <input type="file" id="photo-input" accept="image/*" capture="environment" onchange="handlePhotoUpload(event)" class="hidden">
+                        </div>
+                    </div>
+
+                    <div id="photo-preview-container" class="hidden relative inline-block border p-1 rounded-lg bg-slate-50">
+                        <img id="photo-preview" class="h-24 w-auto rounded-md object-cover" alt="Photo prise">
+                        <button type="button" onclick="removePhoto()" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 text-xs w-6 h-6 flex items-center justify-center shadow no-print">&times;</button>
+                    </div>
+
+                    <p id="ia-status" class="text-xs text-purple-600 font-semibold hidden"></p>
+                </div>
+
+                <div class="pt-4 flex flex-col sm:flex-row gap-3 no-print">
+                    <button type="button" onclick="enregistrerBtSeul()" class="py-3 px-4 bg-slate-700 text-white rounded-xl font-bold text-xs hover:bg-slate-800 shadow-sm flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-bookmark"></i> Enregistrer le BT (Sans changer le statut)
+                    </button>
+                    <button type="button" onclick="enregistrerPreventif('En cours')" class="flex-1 py-3 bg-amber-500 text-white rounded-xl font-bold text-sm hover:bg-amber-600 shadow-sm">
+                        Enregistrer en cours
+                    </button>
+                    <button type="button" onclick="enregistrerPreventif('Terminé')" class="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 shadow-md">
+                        Valider & Marquer comme Terminée
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION CURATIF -->
+        <section id="tab-curatif" class="space-y-6">
+            <div class="flex justify-between items-center no-print">
+                <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-wrench text-red-600"></i> Ordres de Travail Curatifs
+                </h2>
+                <div class="flex gap-2">
+                    <button type="button" onclick="afficherModalCuratifDirect()" class="bg-red-700 text-white text-xs px-3 py-2 rounded-lg font-bold hover:bg-red-800 flex items-center gap-1 shadow-sm">
+                        <i class="fa-solid fa-plus-circle"></i> + Créer Curatif Direct
+                    </button>
+                    <button type="button" onclick="imprimerTousCuratifs()" class="bg-astuce text-white text-xs px-3 py-2 rounded-lg font-bold hover:bg-astuce-dark flex items-center gap-1">
+                        <i class="fa-solid fa-file-pdf"></i> Imprimer Tous les Curatifs
+                    </button>
+                </div>
+            </div>
+
+            <div id="curatifs-list" class="space-y-4"></div>
+        </section>
+
+        <!-- MODAL DE CRÉATION DIRECTE D'UN CURATIF -->
+        <div id="modal-curatif-direct" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                        <i class="fa-solid fa-circle-exclamation text-red-600"></i> Signalement Direct de Curatif
+                    </h3>
+                    <button type="button" onclick="fermerModalCuratifDirect()" class="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
+                </div>
+                
+                <form onsubmit="enregistrerCuratifDirect(event)" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Station concernée</label>
+                        <input list="stations-list" id="cur-direct-station" placeholder="Saisir la station..." required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Anomalie(s) / Équipement(s) concerné(s)</label>
+                        <input type="text" id="cur-direct-taches" placeholder="Ex: Vitre cassée V1, Porte coincée" required class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Description détaillée / Résumé</label>
+                        <textarea id="cur-direct-desc" rows="3" placeholder="Saisissez les détails de la panne..." class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Photo de l'anomalie</label>
+                        <input type="file" id="cur-photo-input" accept="image/*" capture="environment" onchange="handleCuratifPhotoUpload(event)" class="w-full text-xs p-1 bg-slate-50 border border-slate-300 rounded-lg">
+                        <div id="cur-photo-preview-container" class="hidden mt-2 relative inline-block">
+                            <img id="cur-photo-preview" class="h-20 w-auto rounded-md border object-cover">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 pt-2">
+                        <button type="button" onclick="fermerModalCuratifDirect()" class="flex-1 py-2.5 bg-slate-200 text-slate-700 rounded-lg font-bold text-xs">Annuler</button>
+                        <button type="submit" class="flex-1 py-2.5 bg-red-600 text-white rounded-lg font-bold text-xs hover:bg-red-700">Créer l'Ordre Curatif</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- SECTION ESPACE ADMIN -->
+        <section id="tab-audit" class="space-y-6 hidden">
+            
+            <!-- RÉINITIALISATION & ARCHIVAGE DES CAMPAGNES -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 border-l-4 border-l-amber-500">
+                <div class="flex justify-between items-center border-b pb-3">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-rotate text-amber-500"></i> Réinitialisation & Clôture de Campagne
+                        </h2>
+                        <p class="text-xs text-slate-500">Générez une nouvelle campagne semestrielle/annuelle en archivant l'actuelle.</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 items-end">
+                    <div class="flex-1">
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Nom de la campagne à archiver</label>
+                        <input type="text" id="archive-name-input" placeholder="Ex: Campagne S1 - 2026" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm">
+                    </div>
+                    <button type="button" onclick="resetCampaignAndArchive()" class="py-2.5 px-4 bg-amber-600 text-white rounded-lg font-bold text-xs hover:bg-amber-700 shadow flex items-center gap-2 whitespace-nowrap">
+                        <i class="fa-solid fa-box-archive"></i> Archiver & Remettre à Zéro
+                    </button>
+                </div>
+            </div>
+
+            <!-- HISTORIQUE DES ARCHIVES -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                <div class="flex justify-between items-center border-b pb-3">
+                    <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-folder-closed text-indigo-600"></i> Historique des Campagnes Archivées
+                    </h2>
+                    <button type="button" onclick="downloadAllArchivesData()" class="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-700 flex items-center gap-1 shadow-sm">
+                        <i class="fa-solid fa-download"></i> Télécharger Tout le Dossier d'Archives
+                    </button>
+                </div>
+                <div id="archives-list-container" class="space-y-3 text-xs"></div>
+            </div>
+
+            <!-- CRÉATION DE COMPTE -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                <h2 class="text-base font-bold text-slate-800 flex items-center gap-2 border-b pb-3">
+                    <i class="fa-solid fa-user-plus text-astuce"></i> Créer un nouveau compte Technicien
+                </h2>
+                <form onsubmit="handleAdminRegister(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Prénom</label>
+                        <input type="text" id="admin-reg-prenom" placeholder="Ex: Jean" required class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Nom</label>
+                        <input type="text" id="admin-reg-nom" placeholder="Ex: Dupont" required class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Mot de passe provisoire</label>
+                        <input type="password" id="admin-reg-pass" placeholder="••••••••" required class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-sm">
+                    </div>
+                    <div class="sm:col-span-3">
+                        <button type="submit" class="w-full py-2.5 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700">
+                            Créer le compte Technicien
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- UTILISATEURS -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                <h2 class="text-base font-bold text-slate-800 flex items-center gap-2 border-b pb-3">
+                    <i class="fa-solid fa-users text-indigo-600"></i> Comptes enregistrés & Mots de Passe
+                </h2>
+                <div id="users-list-container" class="space-y-2"></div>
+            </div>
+
+            <!-- JOURNAL D'AUDIT -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                <div class="flex justify-between items-center border-b pb-3">
+                    <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-purple-600"></i> Journal d'Audit & Traçabilité
+                    </h2>
+                    <span class="text-xs bg-purple-100 text-purple-800 px-2.5 py-1 rounded-full font-bold">Inviolable</span>
+                </div>
+                <div id="audit-logs-container" class="max-h-80 overflow-y-auto space-y-2 text-xs font-mono pr-1"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        const TOTAL_STATIONS_COUNT = 71;
+
+        const STATIONS = [
+            { id: "621-MONT", nom: "Mont aux Malades", ligne: "T1 - T5" },
+            { id: "621-COQ", nom: "Les Coquets", ligne: "T1 - T5" },
+            { id: "621-COLB", nom: "Place Colbert", ligne: "T1 - T5" },
+            { id: "621-CAMP", nom: "Campus", ligne: "T1 - T5" },
+            { id: "621-FONDU", nom: "Fond du Val", ligne: "T1 - T5" },
+            { id: "621-PEMR", nom: "Mont-Riboudet", ligne: "TRONC COMMUN" },
+            { id: "621-LUCI", nom: "Luciline", ligne: "TRONC COMMUN" },
+            { id: "621-PAST", nom: "Pasteur", ligne: "TRONC COMMUN" },
+            { id: "621-BELGE", nom: "Belges", ligne: "TRONC COMMUN" },
+            { id: "621-TDA", nom: "Théâtre des Arts", ligne: "TRONC COMMUN" },
+            { id: "621-CATH", nom: "Cathédrale", ligne: "TRONC COMMUN" },
+            { id: "621-REPUB", nom: "République", ligne: "TRONC COMMUN" },
+            { id: "621-STMAR", nom: "Saint-Marc", ligne: "TRONC COMMUN" },
+            { id: "621-MART", nom: "Martainville", ligne: "TRONC COMMUN" },
+            { id: "621-CHU", nom: "CHU Charles Nicolle", ligne: "TRONC COMMUN" },
+            { id: "621-SCHO", nom: "Mairie - V. Schoelcher", ligne: "T2" },
+            { id: "621-MOUL", nom: "Moulin à Poudre", ligne: "T2" },
+            { id: "621-DEMIL", nom: "Demi-Lune", ligne: "T2" },
+            { id: "621-PALIS", nom: "Bernard Palissy", ligne: "T2" },
+            { id: "621-DEVIL", nom: "Mairie de Déville", ligne: "T2" },
+            { id: "621-STPIE", nom: "Petit Saint-Pierre", ligne: "T2" },
+            { id: "621-MAIS", nom: "Maison Normande", ligne: "T2" },
+            { id: "621-BAP", nom: "Bapeaume", ligne: "T2" },
+            { id: "621-STHIL", nom: "Saint-Hilaire", ligne: "T2 - T3 - T4" },
+            { id: "621-ADJ", nom: "Auberge de Jeunesse", ligne: "T2 - T3" },
+            { id: "621-2R", nom: "Deux Rivières", ligne: "T2 - T3" },
+            { id: "621-CLOS", nom: "Clos d'Argent", ligne: "T2" },
+            { id: "621-COUP", nom: "Couperin", ligne: "T2" },
+            { id: "621-STCL", nom: "Sainte-Claire", ligne: "T2" },
+            { id: "621-MALR", nom: "Malraux", ligne: "T2" },
+            { id: "621-GALI", nom: "Galilée", ligne: "T2" },
+            { id: "621-MEMPL", nom: "Maison de l'Emploi", ligne: "T2" },
+            { id: "621-CHAT", nom: "Châtelet", ligne: "T2" },
+            { id: "621-TAMA", nom: "Tamarelle", ligne: "T2" },
+            { id: "621-MONE", nom: "Monet", ligne: "T3" },
+            { id: "621-PISS", nom: "Pissarro", ligne: "T3" },
+            { id: "621-HDVJ", nom: "Hôtel de Ville - Jaurès", ligne: "T3" },
+            { id: "621-PROV", nom: "Provence", ligne: "T3" },
+            { id: "621-DUMA", nom: "Dumas", ligne: "T3" },
+            { id: "621-TOUY", nom: "Touyé", ligne: "T3" },
+            { id: "621-PRAT", nom: "Prat", ligne: "T3" },
+            { id: "621-MIN", nom: "MIN", ligne: "T3" },
+            { id: "621-ARCH", nom: "École d'Architecture", ligne: "T3" },
+            { id: "621-DARN", nom: "Mairie de Darnétal", ligne: "T3" },
+            { id: "621-CANA", nom: "Les Canadiens", ligne: "T3" },
+            { id: "621-LAVOI", nom: "Durécu-Lavoisier", ligne: "T3" },
+            { id: "621-MTC", nom: "Marie Curie - MTC", ligne: "T4" },
+            { id: "621-CAMPS", nom: "Campus Santé", ligne: "T4" },
+            { id: "621-MMA", nom: "Marie Marvingt", ligne: "T4" },
+            { id: "621-BOUL", nom: "Boulingrin", ligne: "T4" },
+            { id: "621-BEAU", nom: "Beauvoisine", ligne: "T4" },
+            { id: "621-GARE", nom: "Gare-Rue Verte", ligne: "T4" },
+            { id: "621-CAUCH", nom: "Cauchoise", ligne: "T4" },
+            { id: "621-VIEMA", nom: "Vieux Marché", ligne: "T4" },
+            { id: "621-BELG", nom: "Belges", ligne: "T4" },
+            { id: "621-ORLE", nom: "Orléans", ligne: "T4" },
+            { id: "621-CAF", nom: "CAF", ligne: "T4" },
+            { id: "621-POTE", nom: "Louis Poterat", ligne: "T4" },
+            { id: "621-CHAR", nom: "Chatreux", ligne: "T4" },
+            { id: "621-11NOV", nom: "11 Novembre", ligne: "T4" },
+            { id: "621-DIOCH", nom: "Stade Diochon", ligne: "T4" },
+            { id: "621-CHBRU", nom: "Champ des Bruyères", ligne: "T4" },
+            { id: "621-STEND", nom: "Stendhal", ligne: "T4" },
+            { id: "621-SAND", nom: "George Sand", ligne: "T4" },
+            { id: "621-ZENI", nom: "Zénith - Parc Expo", ligne: "T4" },
+            { id: "621-PEMR-T5", nom: "Mont-Riboudet T5", ligne: "T5" },
+            { id: "621-CACL", nom: "Camille Claudel", ligne: "T5" },
+            { id: "621-ORLE-T5", nom: "Orléans T5", ligne: "T5" },
+            { id: "621-AMCE", nom: "Amiral Cécille", ligne: "T5" },
+            { id: "621-JOFF", nom: "Joffre-Mutualité", ligne: "T5" },
+            { id: "621-CHAMP", nom: "Champlain", ligne: "T5" }
+        ];
+
+        const BASE_TASKS = [
+            "Vérification de la structure et nettoyage du module",
+            "Vérification des vitres",
+            "Vérification et graissage des gonds des portes modules et armoire électrique",
+            "Présence de tag et tracte sur la structure et mobilier",
+            "Vérification et nettoyages des cellules d'éclairages",
+            "Vérification éclairage armoire électrique",
+            "Vérifier le loquet de maintien des portes en position ouverte",
+            "Remplacement des filtres",
+            "Vérification des ancrages et fixations des bancs",
+            "Vérification des ancrages et fixations des poubelles",
+            "Vérification ancrage garde-corps",
+            "Vérification fixation main courante",
+            "Vérification des mâts d'éclairage",
+            "Test dispositif de déclenchement différentiel",
+            "Vérification serrage disjoncteur",
+            "État des quais de station"
+        ];
+
+        let dbUsers = {
+            'paul.admin': { id: 'paul.admin', name: 'Paul Admin', pass: '1234', role: 'ADMIN' }
+        };
+
+        let currentUser = JSON.parse(localStorage.getItem('teor_logged_user_v22')) || null;
+        let statePreventifs = {};
+        let stateCuratifs = [];
+        let stateArchives = [];
+        let auditLogs = [];
+
+        let taskStatusMap = {};
+        let currentPhotoBase64 = null;
+        let curatifPhotoBase64 = null;
+        let visiblePasswords = {};
+        let expandedPrevCards = {};
+
+        function initApp() {
+            document.getElementById('stations-list').innerHTML = STATIONS.map(s => `<option value="${s.id} - ${s.nom} (${s.ligne})">`).join('');
+            document.getElementById('prev-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('print-date-now').innerText = new Date().toLocaleDateString('fr-FR');
+
+            const currentYear = new Date().getFullYear();
+            const currentMonth = new Date().getMonth() + 1;
+            const semester = currentMonth <= 6 ? 'S1' : 'S2';
+            document.getElementById('archive-name-input').value = `Campagne ${semester} - ${currentYear}`;
+
+            renderTaskLists();
+
+            // Attendre que Firebase soit chargé pour synchroniser en temps réel
+            window.addEventListener('firebase-ready', () => {
+                const { db, ref, onValue } = window.FB;
+
+                // Écouter les utilisateurs en temps réel
+                onValue(ref(db, 'users'), (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        dbUsers = data;
+                    } else {
+                        // Initialiser l'admin par défaut sur Firebase si vide
+                        set(ref(db, 'users/paul.admin'), dbUsers['paul.admin']);
+                    }
+                    renderUsersList();
+                });
+
+                // Écouter les préventifs en temps réel
+                onValue(ref(db, 'preventifs'), (snapshot) => {
+                    statePreventifs = snapshot.val() || {};
+                    renderDashboard();
+                    renderPreventifsFaitsList();
+                });
+
+                // Écouter les curatifs en temps réel
+                onValue(ref(db, 'curatifs'), (snapshot) => {
+                    stateCuratifs = snapshot.val() || [];
+                    renderDashboard();
+                    renderCuratifs();
+                });
+
+                // Écouter les archives en temps réel
+                onValue(ref(db, 'archives'), (snapshot) => {
+                    stateArchives = snapshot.val() || [];
+                    renderArchivesList();
+                });
+
+                // Écouter les logs d'audit en temps réel
+                onValue(ref(db, 'auditLogs'), (snapshot) => {
+                    auditLogs = snapshot.val() || [];
+                    renderAuditLogs();
+                });
+            });
+
+            if (currentUser) {
+                document.getElementById('auth-modal').classList.add('hidden');
+                updateUserUI();
+            } else {
+                document.getElementById('auth-modal').classList.remove('hidden');
+            }
+        }
+
+        function saveDataToCloud(path, data) {
+            if (window.FB) {
+                const { db, ref, set } = window.FB;
+                set(ref(db, path), data);
+            }
+        }
+
+        function switchAuthMode(mode) {
+            document.getElementById('form-login').classList.add('hidden');
+            document.getElementById('form-reset').classList.add('hidden');
+            document.getElementById(`form-${mode}`).classList.remove('hidden');
+            document.getElementById('auth-error').classList.add('hidden');
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const usernameInput = document.getElementById('login-username').value.trim().toLowerCase();
+            const passInput = document.getElementById('login-password').value;
+            const errEl = document.getElementById('auth-error');
+
+            const user = dbUsers[usernameInput];
+            if (user && user.pass === passInput) {
+                currentUser = user;
+                localStorage.setItem('teor_logged_user_v22', JSON.stringify(currentUser));
+                document.getElementById('auth-modal').classList.add('hidden');
+                addAuditLog(`CONNEXION de ${currentUser.name} (${currentUser.role})`);
+                updateUserUI();
+            } else {
+                errEl.innerText = "Identifiant ou mot de passe incorrect.";
+                errEl.classList.remove('hidden');
+            }
+        }
+
+        function handleAdminRegister(e) {
+            e.preventDefault();
+            if (!currentUser || currentUser.role !== 'ADMIN') return;
+
+            const prenom = document.getElementById('admin-reg-prenom').value.trim();
+            const nom = document.getElementById('admin-reg-nom').value.trim();
+            const pass = document.getElementById('admin-reg-pass').value;
+
+            const userKey = `${prenom}.${nom}`.toLowerCase().replace(/\s+/g, '');
+            const fullName = `${prenom} ${nom}`;
+
+            if (dbUsers[userKey]) {
+                alert(`L'identifiant ${userKey} existe déjà.`);
+                return;
+            }
+
+            dbUsers[userKey] = { id: userKey, name: fullName, pass: pass, role: 'TECHNICIEN' };
+            saveDataToCloud('users', dbUsers);
+
+            addAuditLog(`CRÉATION DE COMPTE par Admin : ${fullName} (${userKey})`);
+            alert(`Compte Technicien créé avec succès !\nIdentifiant : ${userKey}\nMot de passe : ${pass}`);
+            
+            document.getElementById('admin-reg-prenom').value = '';
+            document.getElementById('admin-reg-nom').value = '';
+            document.getElementById('admin-reg-pass').value = '';
+        }
+
+        function toggleShowPass(userKey) {
+            visiblePasswords[userKey] = !visiblePasswords[userKey];
+            renderUsersList();
+        }
+
+        function supprimerUser(userKey) {
+            if (!currentUser || currentUser.role !== 'ADMIN') return;
+            if (userKey === 'paul.admin') {
+                alert("Vous ne pouvez pas supprimer le compte Administrateur principal !");
+                return;
+            }
+
+            const targetUser = dbUsers[userKey];
+            if (confirm(`Confirmez-vous la suppression du compte de ${targetUser.name} (${userKey}) ?`)) {
+                delete dbUsers[userKey];
+                saveDataToCloud('users', dbUsers);
+                addAuditLog(`SUPPRESSION DU COMPTE ${targetUser.name} (${userKey}) par l'Admin ${currentUser.name}.`);
+            }
+        }
+
+        function renderUsersList() {
+            const container = document.getElementById('users-list-container');
+            if (!container) return;
+
+            const keys = Object.keys(dbUsers);
+            container.innerHTML = keys.map(k => {
+                const u = dbUsers[k];
+                const isMainAdmin = k === 'paul.admin';
+                const show = visiblePasswords[k];
+                return `
+                    <div class="flex justify-between items-center p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                        <div>
+                            <span class="font-bold text-slate-800">${u.name}</span>
+                            <span class="text-slate-500 font-mono ml-2">(${u.id})</span>
+                            <span class="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold ${u.role === 'ADMIN' ? 'bg-astuce-light text-astuce' : 'bg-blue-100 text-blue-700'}">${u.role}</span>
+                            <div class="mt-1 text-[11px] text-slate-600 flex items-center gap-1">
+                                <span>Mot de passe : </span>
+                                <span class="font-mono font-bold bg-slate-200 px-1.5 py-0.5 rounded text-slate-800">${show ? u.pass : '••••••••'}</span>
+                                <button type="button" onclick="toggleShowPass('${u.id}')" class="text-slate-500 hover:text-slate-800 ml-1">
+                                    <i class="fa-solid ${show ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                                </button>
+                            </div>
+                        </div>
+                        ${!isMainAdmin ? `
+                            <button type="button" onclick="supprimerUser('${u.id}')" class="bg-red-600 hover:bg-red-700 text-white p-1.5 rounded-lg text-xs font-bold" title="Supprimer ce compte">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        ` : '<span class="text-[10px] text-slate-400 font-semibold italic">Admin Principal</span>'}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function handleResetPassword(e) {
+            e.preventDefault();
+            const usernameInput = document.getElementById('reset-username').value.trim().toLowerCase();
+            const newPass = document.getElementById('reset-new-password').value;
+            const errEl = document.getElementById('auth-error');
+
+            if (!dbUsers[usernameInput]) {
+                errEl.innerText = "Aucun compte trouvé avec cet identifiant.";
+                errEl.classList.remove('hidden');
+                return;
+            }
+
+            dbUsers[usernameInput].pass = newPass;
+            saveDataToCloud('users', dbUsers);
+            addAuditLog(`RÉINITIALISATION MOT DE PASSE pour : ${dbUsers[usernameInput].name}`);
+            alert(`Mot de passe mis à jour ! Connectez-vous.`);
+            switchAuthMode('login');
+        }
+
+        function logout() {
+            if (currentUser) addAuditLog(`DÉCONNEXION de ${currentUser.name}`);
+            currentUser = null;
+            localStorage.removeItem('teor_logged_user_v22');
+            document.getElementById('auth-modal').classList.remove('hidden');
+            updateUserUI();
+        }
+
+        function updateUserUI() {
+            const roleBadge = document.getElementById('user-display-role');
+            const auditBtn = document.getElementById('btn-tab-audit');
+            const auditTab = document.getElementById('tab-audit');
+
+            if (!currentUser) {
+                document.getElementById('user-display-name').innerText = "Non connecté";
+                roleBadge.innerText = "Technicien";
+                auditBtn.classList.add('hidden');
+                auditTab.classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('user-display-name').innerText = `${currentUser.name} (${currentUser.id})`;
+            document.getElementById('print-user-name').innerText = currentUser.name;
+
+            if (currentUser.role === 'ADMIN' && currentUser.id === 'paul.admin') {
+                roleBadge.innerText = "Administrateur";
+                roleBadge.className = "text-[10px] bg-astuce-dark text-astuce-light px-2 py-0.5 rounded-full font-bold";
+                auditBtn.classList.remove('hidden');
+            } else {
+                roleBadge.innerText = "Technicien";
+                roleBadge.className = "text-[10px] bg-astuce-dark text-astuce-light px-2 py-0.5 rounded-full";
+                auditBtn.classList.add('hidden');
+                auditTab.classList.add('hidden');
+                switchTab('dashboard');
+            }
+        }
+
+        function addAuditLog(actionText) {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('fr-FR') + ' à ' + now.toLocaleTimeString('fr-FR');
+            const entry = `[${dateStr}] ${actionText}`;
+            auditLogs.unshift(entry);
+            saveDataToCloud('auditLogs', auditLogs);
+        }
+
+        function renderAuditLogs() {
+            const container = document.getElementById('audit-logs-container');
+            if (!container) return;
+            container.innerHTML = auditLogs.map(l => `
+                <div class="p-2 bg-slate-900 text-slate-200 rounded border border-slate-800">
+                    ${l}
+                </div>
+            `).join('');
+        }
+
+        function renderTaskLists() {
+            document.getElementById('tasks-container-v1').innerHTML = BASE_TASKS.map((t, idx) => createTaskRow(t + ' V1', `v1_${idx}`)).join('');
+            document.getElementById('tasks-container-v2').innerHTML = BASE_TASKS.map((t, idx) => createTaskRow(t + ' V2', `v2_${idx}`)).join('');
+        }
+
+        function createTaskRow(label, key) {
+            return `
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded gap-2 text-xs">
+                    <span class="font-semibold text-slate-700">${label}</span>
+                    <div class="flex gap-1" id="group-${key}">
+                        <button type="button" onclick="setTaskStatus('${key}', 'OK')" class="btn-${key} flex-1 sm:flex-none px-2.5 py-1 rounded font-bold border border-slate-300 bg-white text-slate-600 hover:bg-emerald-50">OK</button>
+                        <button type="button" onclick="setTaskStatus('${key}', 'ANOMALIE')" class="btn-${key} flex-1 sm:flex-none px-2.5 py-1 rounded font-bold border border-slate-300 bg-white text-slate-600 hover:bg-red-50">ANOMALIE</button>
+                        <button type="button" onclick="setTaskStatus('${key}', 'N/C')" class="btn-${key} flex-1 sm:flex-none px-2.5 py-1 rounded font-bold border border-slate-300 bg-white text-slate-600 hover:bg-slate-100">N/C</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setTaskStatus(key, status) {
+            taskStatusMap[key] = status;
+            const group = document.getElementById(`group-${key}`);
+            if (!group) return;
+            const buttons = group.querySelectorAll(`button`);
+            
+            buttons.forEach(btn => {
+                btn.className = `flex-1 sm:flex-none px-2.5 py-1 rounded font-bold border border-slate-300 bg-white text-slate-600`;
+                if (btn.innerText === status) {
+                    if (status === 'OK') btn.className = "flex-1 sm:flex-none px-2.5 py-1 rounded font-bold bg-emerald-600 text-white shadow-sm";
+                    if (status === 'ANOMALIE') btn.className = "flex-1 sm:flex-none px-2.5 py-1 rounded font-bold bg-red-600 text-white shadow-sm";
+                    if (status === 'N/C') btn.className = "flex-1 sm:flex-none px-2.5 py-1 rounded font-bold bg-slate-600 text-white shadow-sm";
+                }
+            });
+        }
+
+        function handlePhotoUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentPhotoBase64 = e.target.result;
+                    document.getElementById('photo-preview').src = currentPhotoBase64;
+                    document.getElementById('photo-preview-container').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function removePhoto() {
+            currentPhotoBase64 = null;
+            document.getElementById('photo-preview-container').classList.add('hidden');
+            document.getElementById('photo-input').value = '';
+        }
+
+        function handleCuratifPhotoUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    curatifPhotoBase64 = e.target.result;
+                    document.getElementById('cur-photo-preview').src = curatifPhotoBase64;
+                    document.getElementById('cur-photo-preview-container').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function switchTab(tab) {
+            if (tab === 'audit' && (!currentUser || currentUser.role !== 'ADMIN' || currentUser.id !== 'paul.admin')) {
+                alert("Accès réservé exclusivement à l'Administrateur.");
+                return;
+            }
+
+            ['dashboard', 'preventif', 'curatif', 'audit'].forEach(t => {
+                const el = document.getElementById(`tab-${t}`);
+                if (el) el.classList.add('hidden');
+                const btn = document.getElementById(`btn-tab-${t}`);
+                if (btn) btn.className = "flex-1 py-3 px-3 text-center font-bold text-slate-500 border-b-2 border-transparent hover:text-astuce flex justify-center items-center gap-2 text-xs sm:text-sm whitespace-nowrap";
+            });
+
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            document.getElementById(`btn-tab-${tab}`).className = "flex-1 py-3 px-3 text-center font-bold text-astuce border-b-2 border-astuce flex justify-center items-center gap-2 text-xs sm:text-sm whitespace-nowrap";
+        }
+
+        function resetForm() {
+            document.getElementById('prev-bt').value = '';
+            document.getElementById('prev-station').value = '';
+            document.getElementById('prev-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('prev-agents').value = '';
+            document.getElementById('prev-temps').value = '';
+            document.getElementById('prev-commentaires').value = '';
+            document.getElementById('form-title').innerText = "Fiche de Maintenance Préventive";
+            removePhoto();
+            taskStatusMap = {};
+            renderTaskLists();
+        }
+
+        function enregistrerBtSeul() {
+            const rawStation = document.getElementById('prev-station').value.trim();
+            const btVal = document.getElementById('prev-bt').value.trim();
+
+            if (!rawStation) {
+                alert("Veuillez sélectionner ou saisir une station.");
+                return;
+            }
+            if (!btVal) {
+                alert("Veuillez saisir un numéro de BT.");
+                return;
+            }
+
+            const stationCode = rawStation.split(' ')[0];
+            const existing = statePreventifs[stationCode] || { etat: 'À faire' };
+
+            statePreventifs[stationCode] = {
+                ...existing,
+                bt: btVal,
+                date: document.getElementById('prev-date').value || existing.date,
+                agents: document.getElementById('prev-agents').value || existing.agents,
+                temps: document.getElementById('prev-temps').value || existing.temps,
+                commentaires: document.getElementById('prev-commentaires').value || existing.commentaires,
+                photo: currentPhotoBase64 || existing.photo,
+                tasks: { ...taskStatusMap, ...existing.tasks },
+                author: currentUser ? currentUser.name : 'Inconnu'
+            };
+
+            saveDataToCloud('preventifs', statePreventifs);
+            addAuditLog(`${currentUser ? currentUser.name : 'Utilisateur'} a enregistré le BT ${btVal} pour ${stationCode}.`);
+            alert(`Numéro de BT (${btVal}) enregistré pour ${stationCode} !`);
+        }
+
+        function enregistrerPreventif(etat) {
+            const rawStation = document.getElementById('prev-station').value.trim();
+            if (!rawStation) {
+                alert("Veuillez sélectionner ou saisir une station.");
+                return;
+            }
+
+            const stationCode = rawStation.split(' ')[0];
+            const btVal = document.getElementById('prev-bt').value.trim();
+            const dateVal = document.getElementById('prev-date').value;
+            const nowTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            const agents = document.getElementById('prev-agents').value;
+            const temps = document.getElementById('prev-temps').value;
+            const comms = document.getElementById('prev-commentaires').value;
+
+            const anomaliesDetected = [];
+            BASE_TASKS.forEach((t, idx) => {
+                if (taskStatusMap[`v1_${idx}`] === 'ANOMALIE') anomaliesDetected.push(t + ' V1');
+                if (taskStatusMap[`v2_${idx}`] === 'ANOMALIE') anomaliesDetected.push(t + ' V2');
+            });
+
+            if (comms && comms.trim().length > 0 && anomaliesDetected.length === 0) {
+                anomaliesDetected.push("Anomalie spécifique signalée dans le commentaire");
+            }
+
+            const isEdit = !!statePreventifs[stationCode];
+
+            statePreventifs[stationCode] = {
+                etat: etat,
+                bt: btVal,
+                date: dateVal,
+                heure: nowTime,
+                agents: agents,
+                temps: temps,
+                commentaires: comms,
+                photo: currentPhotoBase64,
+                tasks: { ...taskStatusMap },
+                author: currentUser ? currentUser.name : 'Inconnu'
+            };
+
+            stateCuratifs = stateCuratifs.filter(c => c.station !== stationCode);
+
+            if (anomaliesDetected.length > 0) {
+                stateCuratifs.push({
+                    id: 'CUR-' + stationCode,
+                    date: dateVal,
+                    station: stationCode,
+                    taches: anomaliesDetected.join(' | '),
+                    description: comms || 'Anomalie détectée en contrôle préventif',
+                    photo: currentPhotoBase64,
+                    statut: 'À faire',
+                    tempsCuratif: '',
+                    commsCuratif: '',
+                    author: currentUser ? currentUser.name : 'Inconnu'
+                });
+            }
+
+            saveDataToCloud('preventifs', statePreventifs);
+            saveDataToCloud('curatifs', stateCuratifs);
+
+            addAuditLog(`${currentUser ? currentUser.name : 'Utilisateur'} a ${isEdit ? 'MODIFIÉ' : 'CRÉÉ'} le préventif de ${stationCode} (${etat}).`);
+
+            alert(`Préventif enregistré (${etat}).`);
+            switchTab('dashboard');
+        }
+
+        function toggleExpandPrevCard(stationCode) {
+            expandedPrevCards[stationCode] = !expandedPrevCards[stationCode];
+            renderPreventifsFaitsList();
+        }
+
+        function renderPreventifsFaitsList() {
+            const container = document.getElementById('preventifs-faits-list');
+            const terminesKeys = Object.keys(statePreventifs).filter(k => statePreventifs[k].etat === 'Terminé');
+
+            if (terminesKeys.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 italic">Aucun préventif terminé pour cette campagne en cours.</p>`;
+                return;
+            }
+
+            container.innerHTML = terminesKeys.map(k => {
+                const p = statePreventifs[k];
+                const isExpanded = expandedPrevCards[k];
+
+                const anomalies = [];
+                if (p.tasks) {
+                    BASE_TASKS.forEach((t, idx) => {
+                        if (p.tasks[`v1_${idx}`] === 'ANOMALIE') anomalies.push(t + ' (V1)');
+                        if (p.tasks[`v2_${idx}`] === 'ANOMALIE') anomalies.push(t + ' (V2)');
+                    });
+                }
+
+                return `
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm transition-all print-card">
+                        <div onclick="toggleExpandPrevCard('${k}')" class="p-3.5 bg-white hover:bg-slate-50 cursor-pointer flex justify-between items-center select-none">
+                            <div class="flex items-center gap-3">
+                                <span class="p-2 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold">
+                                    <i class="fa-solid fa-check"></i>
+                                </span>
+                                <div>
+                                    <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                        Station : ${k}
+                                        ${p.bt ? `<span class="bg-astuce-light text-astuce text-[11px] font-bold px-2 py-0.5 rounded-full">BT: ${p.bt}</span>` : ''}
+                                    </h4>
+                                    <p class="text-[11px] text-slate-500">
+                                        Fait le ${p.date || 'N/C'} par <strong>${p.author || 'Inconnu'}</strong> (${p.agents || 'Non spécifié'})
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2 no-print">
+                                <button type="button" onclick="event.stopPropagation(); imprimerPreventifUnique('${k}')" class="bg-astuce text-white text-xs px-2.5 py-1.5 rounded-lg hover:bg-astuce-dark font-bold flex items-center gap-1 shadow-sm" title="Imprimer uniquement ce préventif">
+                                    <i class="fa-solid fa-file-pdf"></i> Imprimer
+                                </button>
+                                <span class="text-slate-400 text-sm pl-1">
+                                    <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}"></i>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="${isExpanded ? 'block' : 'hidden'} p-4 bg-slate-50 border-t border-slate-200 text-xs space-y-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white p-2.5 rounded-lg border border-slate-200 font-mono">
+                                <p><strong>Date / Heure :</strong> ${p.date} à ${p.heure || 'N/C'}</p>
+                                <p><strong>Temps passé :</strong> ${p.temps ? p.temps + 'h' : 'N/C'}</p>
+                                <p><strong>Agents :</strong> ${p.agents || 'N/C'}</p>
+                            </div>
+
+                            ${p.commentaires ? `
+                                <div class="bg-slate-100 p-3 rounded-lg border border-slate-200">
+                                    <p class="font-bold text-slate-700 mb-1 flex items-center gap-1">
+                                        <i class="fa-solid fa-comment-dots text-astuce"></i> Remarques / Commentaires :
+                                    </p>
+                                    <p class="text-slate-600 italic whitespace-pre-line">${p.commentaires}</p>
+                                </div>
+                            ` : '<p class="text-slate-400 italic">Aucune remarque spécifique saisie.</p>'}
+
+                            ${anomalies.length > 0 ? `
+                                <div class="bg-red-50 p-3 rounded-lg border border-red-200 text-red-800">
+                                    <p class="font-bold mb-1 flex items-center gap-1">
+                                        <i class="fa-solid fa-triangle-exclamation text-red-600"></i> Anomalie(s) relevée(s) :
+                                    </p>
+                                    <ul class="list-disc list-inside space-y-0.5">
+                                        ${anomalies.map(a => `<li>${a}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            ` : `
+                                <p class="text-emerald-700 font-bold bg-emerald-50 p-2 rounded border border-emerald-200 flex items-center gap-1">
+                                    <i class="fa-solid fa-circle-check"></i> Aucune anomalie détectée lors du contrôle.
+                                </p>
+                            `}
+
+                            ${p.photo ? `
+                                <div>
+                                    <p class="font-bold text-slate-700 mb-1">Photo d'illustration :</p>
+                                    <img src="${p.photo}" class="h-36 w-auto rounded-lg border border-slate-300 object-cover">
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function imprimerPreventifUnique(stationCode) {
+            const p = statePreventifs[stationCode];
+            if (!p) return;
+
+            const anomalies = [];
+            if (p.tasks) {
+                BASE_TASKS.forEach((t, idx) => {
+                    if (p.tasks[`v1_${idx}`] === 'ANOMALIE') anomalies.push(t + ' (V1)');
+                    if (p.tasks[`v2_${idx}`] === 'ANOMALIE') anomalies.push(t + ' (V2)');
+                });
+            }
+
+            const originalContent = document.body.innerHTML;
+
+            const printableHTML = `
+                <div style="font-family: sans-serif; padding: 25px; color: #000;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #e2007a; padding-bottom: 10px; margin-bottom: 20px;">
+                        <div>
+                            <span style="color: #e2007a; font-weight: 900; font-size: 24px;">astuce</span>
+                            <span style="font-size: 12px; color: #666; margin-left: 10px;">Rouen Métropole Mobilités</span>
+                            <h1 style="font-size: 18px; font-weight: bold; margin-top: 5px;">Rapport d'Intervention Préventive - ${stationCode}</h1>
+                        </div>
+                        <div style="text-align: right; font-size: 12px; color: #555;">
+                            <p>Édité le : ${new Date().toLocaleDateString('fr-FR')}</p>
+                            <p>Agent : ${p.author || 'Technicien'}</p>
+                        </div>
+                    </div>
+
+                    <div style="background-color: #f8fafc; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; margin-bottom: 20px;">
+                        <p><strong>N° de BT :</strong> ${p.bt || 'Non renseigné'}</p>
+                        <p><strong>Date d'intervention :</strong> ${p.date || 'N/C'} à ${p.heure || 'N/C'}</p>
+                        <p><strong>Agents présents :</strong> ${p.agents || 'N/C'}</p>
+                        <p><strong>Temps passé :</strong> ${p.temps ? p.temps + ' heure(s)' : 'N/C'}</p>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="color: #e2007a; font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #e2007a; padding-bottom: 4px;">Commentaires / Remarques :</h3>
+                        <p style="font-size: 13px; margin-top: 8px; font-style: italic;">${p.commentaires || 'Aucune remarque saisie.'}</p>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="color: #b80063; font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #b80063; padding-bottom: 4px;">Anomalies détectées :</h3>
+                        ${anomalies.length > 0 ? `
+                            <ul style="font-size: 13px; color: #dc2626; margin-top: 8px;">
+                                ${anomalies.map(a => `<li>${a}</li>`).join('')}
+                            </ul>
+                        ` : '<p style="font-size: 13px; color: #16a34a; margin-top: 8px;">Toutes les vérifications sont conformes (OK).</p>'}
+                    </div>
+
+                    ${p.photo ? `
+                        <div style="margin-top: 20px;">
+                            <h3 style="font-size: 14px; uppercase; border-bottom: 1px solid #ccc; padding-bottom: 4px;">Photo prise lors du contrôle :</h3>
+                            <img src="${p.photo}" style="max-height: 280px; border-radius: 8px; margin-top: 10px; border: 1px solid #ccc;"/>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            document.body.innerHTML = printableHTML;
+            window.print();
+            document.body.innerHTML = originalContent;
+            window.location.reload();
+        }
+
+        function resetCampaignAndArchive() {
+            if (!currentUser || currentUser.role !== 'ADMIN') return;
+
+            const nameInput = document.getElementById('archive-name-input').value.trim();
+            if (!nameInput) {
+                alert("Veuillez saisir un nom pour la campagne à archiver.");
+                return;
+            }
+
+            if (!confirm(`Attention ! Voulez-vous vraiment archiver la campagne actuelle sous le nom "${nameInput}" et remettre à zéro TOUS les préventifs et curatifs ?`)) {
+                return;
+            }
+
+            const archiveEntry = {
+                id: 'ARCH-' + Date.now(),
+                name: nameInput,
+                dateArchived: new Date().toLocaleDateString('fr-FR') + ' à ' + new Date().toLocaleTimeString('fr-FR'),
+                archivedBy: currentUser.name,
+                preventifs: { ...statePreventifs },
+                curatifs: [ ...stateCuratifs ]
+            };
+
+            stateArchives.unshift(archiveEntry);
+            saveDataToCloud('archives', stateArchives);
+
+            statePreventifs = {};
+            stateCuratifs = [];
+            saveDataToCloud('preventifs', statePreventifs);
+            saveDataToCloud('curatifs', stateCuratifs);
+
+            addAuditLog(`CLÔTURE & ARCHIVAGE : La campagne "${nameInput}" a été archivée par ${currentUser.name}. Remise à zéro effectuée.`);
+
+            alert(`La campagne "${nameInput}" a été archivée avec succès !\nLes données de l'application ont été réinitialisées pour la nouvelle campagne.`);
+        }
+
+        function restoreCuratifFromArchive(archiveId, curatifId) {
+            const arch = stateArchives.find(a => a.id === archiveId);
+            if (!arch) return;
+
+            const curatifToRestore = arch.curatifs.find(c => c.id === curatifId);
+            if (!curatifToRestore) return;
+
+            if (confirm(`Voulez-vous restaurer le curatif ${curatifToRestore.id} (${curatifToRestore.station}) dans la liste active des curatifs ?`)) {
+                const newCuratif = { ...curatifToRestore, id: curatifToRestore.id + '-REST' };
+                stateCuratifs.push(newCuratif);
+                saveDataToCloud('curatifs', stateCuratifs);
+
+                addAuditLog(`RESTAURATION CURATIF : ${curatifToRestore.id} réinséré par ${currentUser.name} depuis l'archive "${arch.name}".`);
+                alert(`Le curatif pour ${curatifToRestore.station} a été réinséré dans la liste active des Curatifs !`);
+            }
+        }
+
+        function downloadSingleArchiveData(archiveId) {
+            const arch = stateArchives.find(a => a.id === archiveId);
+            if (!arch) return;
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(arch, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `Dossier_Archive_${arch.name.replace(/\s+/g, '_')}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+
+            addAuditLog(`TÉLÉCHARGEMENT DOSSIER ARCHIVE : "${arch.name}" téléchargé par ${currentUser.name}.`);
+        }
+
+        function downloadAllArchivesData() {
+            if (stateArchives.length === 0) {
+                alert("Aucune archive disponible au téléchargement.");
+                return;
+            }
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(stateArchives, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `Dossier_Complet_Toutes_Campagnes_TEOR.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+
+            addAuditLog(`TÉLÉCHARGEMENT DOSSIER COMPLET DES ARCHIVES par ${currentUser.name}.`);
+        }
+
+        function renderArchivesList() {
+            const container = document.getElementById('archives-list-container');
+            if (!container) return;
+
+            if (stateArchives.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 italic">Aucune campagne archivée pour le moment.</p>`;
+                return;
+            }
+
+            container.innerHTML = stateArchives.map(a => {
+                const prevCount = Object.keys(a.preventifs || {}).length;
+                const curCount = (a.curatifs || []).length;
+
+                return `
+                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
+                        <div class="flex justify-between items-center border-b pb-2 flex-wrap gap-2">
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-sm">${a.name}</h4>
+                                <p class="text-[10px] text-slate-500">Archivé le ${a.dateArchived} par ${a.archivedBy}</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">${prevCount} Préventifs</span>
+                                <span class="bg-astuce-light text-astuce text-[10px] font-bold px-2 py-0.5 rounded-full">${curCount} Curatifs</span>
+                                <button type="button" onclick="downloadSingleArchiveData('${a.id}')" class="bg-indigo-600 text-white text-[10px] px-2.5 py-1 rounded font-bold hover:bg-indigo-700 flex items-center gap-1 shadow-sm">
+                                    <i class="fa-solid fa-download"></i> Télécharger le Dossier
+                                </button>
+                            </div>
+                        </div>
+
+                        ${curCount > 0 ? `
+                            <div class="space-y-1 mt-2">
+                                <p class="font-bold text-[11px] text-slate-700">Ordres Curatifs enregistrés dans cette archive :</p>
+                                <div class="max-h-40 overflow-y-auto space-y-1 pr-1">
+                                    ${a.curatifs.map(c => `
+                                        <div class="flex justify-between items-center bg-white p-2 border border-slate-200 rounded text-[11px]">
+                                            <div>
+                                                <span class="font-bold text-slate-800">${c.station}</span>
+                                                <span class="text-slate-500 font-mono ml-1">(${c.id})</span>
+                                                <p class="text-slate-600 truncate max-w-xs">${c.taches}</p>
+                                            </div>
+                                            <button type="button" onclick="restoreCuratifFromArchive('${a.id}', '${c.id}')" class="bg-astuce hover:bg-astuce-dark text-white px-2 py-1 rounded font-bold text-[10px] flex items-center gap-1 shadow-sm">
+                                                <i class="fa-solid fa-arrow-rotate-left"></i> Réinsérer dans la liste active
+                                            </button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : '<p class="text-[11px] text-slate-400 italic">Aucun ordre curatif sur cette campagne.</p>'}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderDashboard() {
+            const terminesCount = Object.keys(statePreventifs).filter(k => statePreventifs[k].etat === 'Terminé').length;
+            const prevPct = Math.round((terminesCount / TOTAL_STATIONS_COUNT) * 100);
+
+            document.getElementById('kpi-prev-pct').innerText = `${prevPct}%`;
+            document.getElementById('kpi-prev-count').innerText = `(${terminesCount} / ${TOTAL_STATIONS_COUNT})`;
+            document.getElementById('bar-prev-pct').style.width = `${prevPct}%`;
+
+            const totalCuratifs = stateCuratifs.length;
+            const curatifsResolus = stateCuratifs.filter(c => c.statut === 'Résolu').length;
+            const curPct = totalCuratifs > 0 ? Math.round((curatifsResolus / totalCuratifs) * 100) : 100;
+
+            document.getElementById('kpi-cur-pct').innerText = `${curPct}%`;
+            document.getElementById('kpi-cur-count').innerText = `(${curatifsResolus} Résolu / ${totalCuratifs} Total)`;
+            document.getElementById('bar-cur-pct').style.width = `${curPct}%`;
+
+            let healthPct = 0;
+            let statusText = "Excellent";
+            let statusClass = "bg-emerald-100 text-emerald-800";
+
+            if (terminesCount > 0) {
+                healthPct = Math.round((totalCuratifs / terminesCount) * 100);
+            }
+
+            document.getElementById('kpi-health-pct').innerText = `${healthPct}%`;
+            
+            if (healthPct > 40) {
+                statusText = "Attention";
+                statusClass = "bg-red-100 text-red-800";
+            } else if (healthPct > 20) {
+                statusText = "Moyen";
+                statusClass = "bg-amber-100 text-amber-800";
+            }
+
+            const statusEl = document.getElementById('kpi-health-status');
+            statusEl.innerText = statusText;
+            statusEl.className = `text-xs font-bold px-2 py-0.5 rounded-full ${statusClass}`;
+        }
+
+        function imprimerPreventifsFaits() {
+            const tabDash = document.getElementById('tab-dashboard');
+            tabDash.classList.add('print-active-section');
+            window.print();
+            tabDash.classList.remove('print-active-section');
+        }
+
+        function imprimerCuratifUnique(idx) {
+            const c = stateCuratifs[idx];
+            const originalContent = document.body.innerHTML;
+
+            const printableHTML = `
+                <div style="font-family: sans-serif; padding: 20px; color: #000;">
+                    <div style="display:flex; justify-between; align-items:center;">
+                        <h2 style="color: #e2007a;">astuce - Ordre de Travail Curatif : ${c.id}</h2>
+                    </div>
+                    <hr style="margin-bottom: 15px; border-color: #e2007a;"/>
+                    <p><strong>Station :</strong> ${c.station}</p>
+                    <p><strong>Date de signalement :</strong> ${c.date}</p>
+                    <p><strong>Statut :</strong> ${c.statut}</p>
+                    <p><strong>Signalé par :</strong> ${c.author || 'Inconnu'}</p>
+                    <p><strong>Anomalie(s) :</strong> ${c.taches}</p>
+                    <p><strong>Résumé / Détails :</strong> ${c.description || 'Aucun détail'}</p>
+                    <p><strong>Temps passé :</strong> ${c.tempsCuratif ? c.tempsCuratif + 'h' : 'Non renseigné'}</p>
+                    <p><strong>Commentaire de résolution :</strong> ${c.commsCuratif || 'Aucun commentaire'}</p>
+                    ${c.photo ? `<div style="margin-top:15px;"><p><strong>Photo :</strong></p><img src="${c.photo}" style="max-height: 250px; border-radius: 8px; border: 1px solid #ccc;"/></div>` : ''}
+                </div>
+            `;
+
+            document.body.innerHTML = printableHTML;
+            window.print();
+            document.body.innerHTML = originalContent;
+            window.location.reload(); 
+        }
+
+        function imprimerTousCuratifs() {
+            const tabCuratif = document.getElementById('tab-curatif');
+            tabCuratif.classList.add('print-active-section');
+            window.print();
+            tabCuratif.classList.remove('print-active-section');
+        }
+
+        function afficherModalCuratifDirect() {
+            document.getElementById('modal-curatif-direct').classList.remove('hidden');
+        }
+
+        function fermerModalCuratifDirect() {
+            document.getElementById('modal-curatif-direct').classList.add('hidden');
+            curatifPhotoBase64 = null;
+            document.getElementById('cur-photo-preview-container').classList.add('hidden');
+        }
+
+        function enregistrerCuratifDirect(e) {
+            e.preventDefault();
+            const rawStation = document.getElementById('cur-direct-station').value.trim();
+            const stationCode = rawStation.split(' ')[0];
+            const taches = document.getElementById('cur-direct-taches').value.trim();
+            const desc = document.getElementById('cur-direct-desc').value.trim();
+
+            if (!stationCode || !taches) {
+                alert("Veuillez renseigner la station et l'anomalie.");
+                return;
+            }
+
+            const newCuratif = {
+                id: 'CUR-DIR-' + Date.now().toString().slice(-4),
+                date: new Date().toISOString().split('T')[0],
+                station: stationCode,
+                taches: taches,
+                description: desc || 'Signalement direct hors préventif',
+                photo: curatifPhotoBase64,
+                statut: 'À faire',
+                tempsCuratif: '',
+                commsCuratif: '',
+                author: currentUser ? currentUser.name : 'Inconnu'
+            };
+
+            stateCuratifs.push(newCuratif);
+            saveDataToCloud('curatifs', stateCuratifs);
+
+            addAuditLog(`${currentUser ? currentUser.name : 'Utilisateur'} a CRÉÉ UN CURATIF DIRECT pour ${stationCode}.`);
+
+            fermerModalCuratifDirect();
+            alert(`Ordre curatif créé avec succès pour ${stationCode} !`);
+        }
+
+        function analyserIA() {
+            const txt = document.getElementById('prev-commentaires').value.trim();
+            const statusEl = document.getElementById('ia-status');
+
+            if (!txt) {
+                alert("Veuillez saisir des remarques avant de lancer l'analyse IA.");
+                return;
+            }
+
+            statusEl.innerText = "L'IA analyse vos remarques...";
+            statusEl.classList.remove('hidden');
+
+            setTimeout(() => {
+                let matchCount = 0;
+                const lower = txt.toLowerCase();
+
+                if (lower.includes('vitre') || lower.includes('glace') || lower.includes('fissur')) { setTaskStatus('v1_1', 'ANOMALIE'); setTaskStatus('v2_1', 'ANOMALIE'); matchCount++; }
+                if (lower.includes('eclairage') || lower.includes('ampoule') || lower.includes('sombre')) { setTaskStatus('v1_4', 'ANOMALIE'); setTaskStatus('v2_4', 'ANOMALIE'); matchCount++; }
+                if (lower.includes('porte') || lower.includes('gond') || lower.includes('serrure')) { setTaskStatus('v1_2', 'ANOMALIE'); setTaskStatus('v2_2', 'ANOMALIE'); matchCount++; }
+                if (lower.includes('banc') || lower.includes('assise')) { setTaskStatus('v1_8', 'ANOMALIE'); setTaskStatus('v2_8', 'ANOMALIE'); matchCount++; }
+                if (lower.includes('poubelle') || lower.includes('bac')) { setTaskStatus('v1_9', 'ANOMALIE'); setTaskStatus('v2_9', 'ANOMALIE'); matchCount++; }
+
+                statusEl.innerText = matchCount > 0 
+                    ? `IA : ${matchCount} anomalie(s) pré-cochée(s) en rouge.` 
+                    : "IA : Remarque prise en compte pour l'ordre de travail curatif.";
+            }, 300);
+        }
+
+        function renderCuratifs() {
+            const listEl = document.getElementById('curatifs-list');
+            const badgeEl = document.getElementById('badge-curatif');
+
+            const aFaireCount = stateCuratifs.filter(c => c.statut === 'À faire').length;
+
+            if (aFaireCount > 0) {
+                badgeEl.innerText = aFaireCount;
+                badgeEl.classList.remove('hidden');
+            } else {
+                badgeEl.classList.add('hidden');
+            }
+
+            if (stateCuratifs.length === 0) {
+                listEl.innerHTML = `
+                    <div class="bg-white p-8 text-center rounded-xl border border-slate-200 text-slate-400">
+                        <i class="fa-solid fa-circle-check text-4xl mb-2 text-emerald-500"></i>
+                        <p class="font-semibold text-slate-600">Aucune intervention curative en attente pour cette campagne.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const isAdmin = currentUser && currentUser.role === 'ADMIN' && currentUser.id === 'paul.admin';
+
+            listEl.innerHTML = stateCuratifs.map((c, idx) => `
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3 border-l-4 border-l-red-500 print-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded">${c.id}</span>
+                            <h3 class="font-bold text-slate-800 text-base mt-1">${c.station}</h3>
+                            <p class="text-xs text-slate-500">Signalé le ${c.date} par ${c.author || 'Inconnu'}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="imprimerCuratifUnique(${idx})" class="bg-astuce text-white text-xs px-2.5 py-1.5 rounded-lg hover:bg-astuce-dark font-bold no-print flex items-center gap-1" title="Imprimer uniquement ce curatif">
+                                <i class="fa-solid fa-file-pdf"></i> PDF
+                            </button>
+
+                            <select onchange="updateCuratifStatus(${idx}, this.value)" class="text-xs font-bold border rounded p-1.5 bg-slate-50 no-print">
+                                <option value="À faire" ${c.statut === 'À faire' ? 'selected' : ''}>À faire</option>
+                                <option value="En cours" ${c.statut === 'En cours' ? 'selected' : ''}>En cours</option>
+                                <option value="Résolu" ${c.statut === 'Résolu' ? 'selected' : ''}>Résolu</option>
+                            </select>
+
+                            ${isAdmin ? `
+                                <button type="button" onclick="supprimerCuratifDev(${idx})" class="bg-red-600 text-white text-xs p-1.5 rounded-lg hover:bg-red-700 font-bold no-print" title="Supprimer (Réservé Admin)">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    <div class="bg-red-50 p-2.5 rounded-lg border border-red-100 text-xs text-red-800 space-y-1">
+                        <p class="font-bold">Anomalie(s) constatée(s) : <span class="font-normal">${c.taches}</span></p>
+                        ${c.description ? `<p class="font-bold text-slate-700 border-t border-red-200/60 pt-1">Résumé / Détails : <span class="font-normal text-slate-600">${c.description}</span></p>` : ''}
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 no-print bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase">Temps curatif (h)</label>
+                            <input type="number" step="0.5" value="${c.tempsCuratif || ''}" onchange="saveCuratifDetails(${idx}, 'tempsCuratif', this.value)" placeholder="ex: 1.5" class="w-full p-1.5 bg-white border rounded text-xs">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase">Commentaire de résolution / Suivi</label>
+                            <input type="text" value="${c.commsCuratif || ''}" onchange="saveCuratifDetails(${idx}, 'commsCuratif', this.value)" placeholder="ex: Pièce remplacée..." class="w-full p-1.5 bg-white border rounded text-xs">
+                        </div>
+                    </div>
+
+                    <div class="hidden print:block text-xs text-slate-700 bg-slate-50 p-2.5 rounded border border-slate-200">
+                        <p class="font-bold">Suivi & Commentaire d'intervention :</p>
+                        <p class="mt-1">${c.tempsCuratif ? `<strong>Temps passé :</strong> ${c.tempsCuratif}h | ` : ''} <strong>Remarques :</strong> ${c.commsCuratif || c.description || 'Aucun commentaire'}</p>
+                    </div>
+
+                    <div class="mt-2 space-y-2">
+                        <div class="flex items-center gap-2 no-print">
+                            <label for="photo-curative-${idx}" class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded border border-slate-300 text-xs font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-camera"></i>
+                                <span>${c.photo ? 'Changer la photo' : 'Ajouter une photo'}</span>
+                            </label>
+                            <input type="file" id="photo-curative-${idx}" accept="image/*" capture="environment" onchange="updateCuratifPhoto(${idx}, event)" class="hidden">
+                        </div>
+
+                        ${c.photo ? `
+                            <div>
+                                <p class="text-[11px] font-bold text-slate-500 uppercase mb-1">Photo d'illustration :</p>
+                                <img src="${c.photo}" class="h-32 w-auto rounded-lg border border-slate-300 object-cover">
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateCuratifPhoto(idx, event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    stateCuratifs[idx].photo = e.target.result;
+                    saveDataToCloud('curatifs', stateCuratifs);
+                    addAuditLog(`${currentUser.name} a mis à jour la photo du curatif ${stateCuratifs[idx].id}.`);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function saveCuratifDetails(idx, field, value) {
+            stateCuratifs[idx][field] = value;
+            saveDataToCloud('curatifs', stateCuratifs);
+            addAuditLog(`${currentUser.name} a mis à jour le champ ${field} du curatif ${stateCuratifs[idx].id}.`);
+        }
+
+        function updateCuratifStatus(idx, newStatut) {
+            const oldStatut = stateCuratifs[idx].statut;
+            stateCuratifs[idx].statut = newStatut;
+            saveDataToCloud('curatifs', stateCuratifs);
+            addAuditLog(`${currentUser.name} a changé le statut du curatif ${stateCuratifs[idx].id} (${oldStatut} -> ${newStatut}).`);
+        }
+
+        function supprimerCuratifDev(idx) {
+            if (!currentUser || currentUser.role !== 'ADMIN' || currentUser.id !== 'paul.admin') return;
+            const target = stateCuratifs[idx];
+            if (confirm(`Confirmez-vous la suppression définitive du curatif ${target.id} ?`)) {
+                stateCuratifs.splice(idx, 1);
+                saveDataToCloud('curatifs', stateCuratifs);
+                addAuditLog(`SUPPRESSION du curatif ${target.id} par l'Admin ${currentUser.name}.`);
+            }
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
